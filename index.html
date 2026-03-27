@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rwanda Earth Intelligence Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+
+    <header class="top-bar">
+        <div class="top-bar-left">
+            <div class="logo">
+                <div class="logo-icon"><i class="fas fa-satellite"></i></div>
+                <div class="logo-text">
+                    <h1>Rwanda Earth Intelligence</h1>
+                    <span class="logo-subtitle">Powered by RwaSat-1 Mission Data</span>
+                </div>
+            </div>
+        </div>
+        <div class="top-bar-center">
+            <div class="search-container">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="location-search" placeholder="Search a location in Rwanda (e.g. Nyabihu, Musanze)...">
+                <button class="search-btn" id="search-btn">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+        <div class="top-bar-right">
+            <div class="last-updated" id="last-updated">
+                <i class="fas fa-clock"></i>
+                <span>Live Data</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard">
+
+        <section class="map-panel">
+            <div class="panel-header">
+                <h2><i class="fas fa-map-marked-alt"></i> Satellite View</h2>
+                <div class="map-controls">
+                    <button class="map-layer-btn active" data-layer="vegetation" title="Vegetation Health (NDVI)">
+                        <i class="fas fa-leaf"></i> NDVI
+                    </button>
+                    <button class="map-layer-btn" data-layer="truecolor" title="True Color Imagery">
+                        <i class="fas fa-image"></i> True Color
+                    </button>
+                    <button class="map-layer-btn" data-layer="temperature" title="Land Surface Temperature">
+                        <i class="fas fa-temperature-high"></i> Temp
+                    </button>
+                </div>
+            </div>
+            <div id="map"></div>
+            <div class="map-legend" id="map-legend">
+                <span class="legend-title">Vegetation Health</span>
+                <div class="legend-bar">
+                    <span class="legend-label">Bare/Water</span>
+                    <div class="legend-gradient"></div>
+                    <span class="legend-label">Dense Vegetation</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="data-panel">
+
+            <div class="data-card" id="location-info-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-map-pin"></i> Selected Location</h3>
+                </div>
+                <div class="card-body">
+                    <div class="location-name" id="selected-location">Click on the map or search a location</div>
+                    <div class="location-coords" id="selected-coords"></div>
+                </div>
+            </div>
+
+            <div class="data-card" id="soil-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-water"></i> Soil & Water</h3>
+                </div>
+                <div class="card-body">
+                    <div class="data-row">
+                        <span class="data-label">Soil Moisture</span>
+                        <div class="gauge-container">
+                            <div class="gauge-bar" id="soil-moisture-bar"></div>
+                        </div>
+                        <span class="data-value" id="soil-moisture-value">--</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Soil Temperature</span>
+                        <span class="data-value" id="soil-temp-value">--</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Evapotranspiration</span>
+                        <span class="data-value" id="evapotranspiration-value">--</span>
+                    </div>
+                    <div class="risk-badge" id="drought-risk">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Select a location to assess drought risk</span>
+                    </div>
+                </div>
+                <div class="loading-overlay" id="soil-loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <div class="data-card" id="rainfall-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-cloud-rain"></i> Rainfall</h3>
+                </div>
+                <div class="card-body">
+                    <div class="data-row">
+                        <span class="data-label">Today</span>
+                        <span class="data-value" id="rainfall-today">--</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Last 7 Days</span>
+                        <span class="data-value" id="rainfall-week">--</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Last 30 Days</span>
+                        <span class="data-value" id="rainfall-month">--</span>
+                    </div>
+                    <div class="rainfall-chart-container">
+                        <canvas id="rainfall-chart"></canvas>
+                    </div>
+                </div>
+                <div class="loading-overlay" id="rainfall-loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <div class="data-card" id="elevation-card">
+                <div class="card-header">
+                    <h3><i class="fas fa-mountain"></i> Elevation & Risk</h3>
+                </div>
+                <div class="card-body">
+                    <div class="data-row">
+                        <span class="data-label">Altitude</span>
+                        <span class="data-value" id="elevation-value">--</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Slope Grade</span>
+                        <span class="data-value" id="slope-value">--</span>
+                    </div>
+                    <div class="risk-badge" id="erosion-risk">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Select a location to assess erosion risk</span>
+                    </div>
+                </div>
+                <div class="loading-overlay" id="elevation-loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <section class="alerts-panel">
+        <div class="alerts-header">
+            <h2><i class="fas fa-bell"></i> Disaster Alerts</h2>
+            <div class="alerts-controls">
+                <div class="filter-group">
+                    <span class="filter-label">Filter:</span>
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="wildfires">
+                        <i class="fas fa-fire"></i> Fires
+                    </button>
+                    <button class="filter-btn" data-filter="floods">
+                        <i class="fas fa-water"></i> Floods
+                    </button>
+                    <button class="filter-btn" data-filter="storms">
+                        <i class="fas fa-bolt"></i> Storms
+                    </button>
+                    <button class="filter-btn" data-filter="volcanoes">
+                        <i class="fas fa-volcano"></i> Volcanoes
+                    </button>
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Period:</span>
+                    <select id="date-range-filter">
+                        <option value="7">Last 7 days</option>
+                        <option value="30" selected>Last 30 days</option>
+                        <option value="90">Last 90 days</option>
+                        <option value="365">Last year</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <span class="filter-label">Sort:</span>
+                    <button class="sort-btn active" data-sort="newest">
+                        <i class="fas fa-clock"></i> Newest
+                    </button>
+                    <button class="sort-btn" data-sort="closest">
+                        <i class="fas fa-location-dot"></i> Closest
+                    </button>
+                    <button class="sort-btn" data-sort="alphabetical">
+                        <i class="fas fa-arrow-down-a-z"></i> A-Z
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="alerts-search">
+            <i class="fas fa-search"></i>
+            <input type="text" id="alerts-search-input" placeholder="Search disaster events...">
+        </div>
+
+        <div class="alerts-list" id="alerts-list">
+            <div class="loading" id="alerts-loading">
+                <div class="spinner"></div>
+                <p>Fetching disaster events from NASA EONET...</p>
+            </div>
+        </div>
+
+        <div class="alerts-empty hidden" id="alerts-empty">
+            <i class="fas fa-check-circle"></i>
+            <p>No disaster events found for the selected filters.</p>
+        </div>
+    </section>
+
+    <div class="error-toast hidden" id="error-toast">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="error-message"></span>
+        <button class="toast-close" id="toast-close"><i class="fas fa-times"></i></button>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p class="footer-title">Rwanda Earth Intelligence Dashboard</p>
+            <p class="api-credits">
+                Data sources:
+                <a href="https://eonet.gsfc.nasa.gov/docs/v3" target="_blank">NASA EONET v3</a> · 
+                <a href="https://gibs.earthdata.nasa.gov" target="_blank">NASA GIBS Imagery</a> · 
+                <a href="https://open-meteo.com/en/docs" target="_blank">Open-Meteo Climate API</a> · 
+                <a href="https://open-elevation.com/" target="_blank">Open Elevation API</a> · 
+                <a href="https://leafletjs.com/" target="_blank">Leaflet.js</a>
+            </p>
+            <p class="footer-note">
+                This dashboard uses open-source satellite APIs that mirror RwaSat-1's data objectives to make earth intelligence accessible to every Rwandan citizen.
+            </p>
+            <p class="copyright">&copy; 2026 Rwanda Earth Intelligence.</p>
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+
+</body>
+</html>
