@@ -2,6 +2,7 @@ const loadLocationData = async (lat, lng, name) => {
     displayLocationInfo(name, lat, lng);
     setSelectedLocation(lat, lng, name);
     flyToLocation(lat, lng, 11);
+    updateSelectedCoords(lat, lng);
 
     showLoading('soil-loading');
     showLoading('rainfall-loading');
@@ -27,6 +28,7 @@ const loadLocationData = async (lat, lng, name) => {
         hideLoading('elevation-loading');
     }
 
+    applyFilters();
     updateLastUpdated();
 };
 
