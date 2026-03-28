@@ -138,7 +138,7 @@ const fetchElevation = async (lat, lng) => {
 };
 
 const fetchDisasterEvents = async (days) => {
-    const daysParam = days || 60;
+    const daysParam = days || 7;
 
     const url = 'https://eonet.gsfc.nasa.gov/api/v3/events?' +
         'days=' + daysParam +
