@@ -49,7 +49,7 @@ const handleSearch = async () => {
 
 const loadDisasterEvents = async () => {
     const loading = document.getElementById('alerts-loading');
-    loading.style.display = 'block';
+    if (loading) loading.style.display = 'block';
 
     try {
         const events = await fetchDisasterEvents(currentDateRange);
@@ -57,7 +57,7 @@ const loadDisasterEvents = async () => {
         applyFilters();
     } catch (err) {
         showError(err.message);
-        loading.style.display = 'none';
+        if (loading) loading.style.display = 'none';
     }
 
     updateLastUpdated();

@@ -183,9 +183,10 @@
                 <div class="filter-group">
                     <span class="filter-label">Period:</span>
                     <select id="date-range-filter">
-                        <option value="7">Last 7 days</option>
-                        <option value="30" selected>Last 30 days</option>
+                        <option value="30">Last 30 days</option>
+                        <option value="60" selected>Last 60 days</option>
                         <option value="90">Last 90 days</option>
+                        <option value="180">Last 6 months</option>
                         <option value="365">Last year</option>
                     </select>
                 </div>
@@ -209,12 +210,12 @@
             <input type="text" id="alerts-search-input" placeholder="Search disaster events...">
         </div>
 
-        <div class="alerts-list" id="alerts-list">
-            <div class="loading" id="alerts-loading">
-                <div class="spinner"></div>
-                <p>Fetching disaster events from NASA EONET...</p>
-            </div>
+        <div class="loading" id="alerts-loading">
+            <div class="spinner"></div>
+            <p>Fetching disaster events from NASA EONET...</p>
         </div>
+
+        <div class="alerts-list" id="alerts-list"></div>
 
         <div class="alerts-empty hidden" id="alerts-empty">
             <i class="fas fa-check-circle"></i>

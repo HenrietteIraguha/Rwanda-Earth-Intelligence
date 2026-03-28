@@ -158,7 +158,7 @@ const displayDisasterEvents = (events) => {
     const empty = document.getElementById('alerts-empty');
     const loading = document.getElementById('alerts-loading');
 
-    loading.style.display = 'none';
+    if (loading) loading.style.display = 'none';
 
     if (events.length === 0) {
         list.innerHTML = '';
