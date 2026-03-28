@@ -4,6 +4,10 @@ let currentFilter = 'all';
 let currentSort = 'newest';
 let currentDateRange = 7;
 let rainfallChart = null;
+let selectedLat = -1.9403;
+let selectedLng = 29.8739;
+let lastSoilData = null;
+let lastElevationData = null;
 
 const showLoading = (cardId) => {
     const loader = document.getElementById(cardId);
@@ -37,6 +41,7 @@ const displayLocationInfo = (name, lat, lng) => {
 };
 
 const displaySoilData = (data) => {
+    lastSoilData = data;
     const moistureBar = document.getElementById('soil-moisture-bar');
     const moistureValue = document.getElementById('soil-moisture-value');
     const tempValue = document.getElementById('soil-temp-value');
@@ -137,6 +142,7 @@ const buildRainfallChart = (dates, rainfall) => {
 };
 
 const displayElevationData = (data) => {
+    lastElevationData = data;
     document.getElementById('elevation-value').textContent = data.altitude + ' m';
     document.getElementById('slope-value').textContent = data.slope + '°';
 
@@ -214,7 +220,15 @@ const displayDisasterEvents = (events) => {
 };
 
 const applyFilters = () => {
-    let result = [...allEvents];
+    let result = allEvents.map((event) => {
+        const distanceKm = Math.round(
+            Math.sqrt(
+                Math.pow((event.lat - selectedLat) * 111, 2) +
+                Math.pow((event.lng - selectedLng) * 111 * Math.cos(selectedLat * Math.PI / 180), 2)
+            )
+        );
+        return Object.assign({}, event, { distance: distanceKm });
+    });
 
     const searchTerm = document.getElementById('alerts-search-input').value.toLowerCase().trim();
     if (searchTerm) {
@@ -256,6 +270,173 @@ const applyFilters = () => {
     });
 
     displayDisasterEvents(filteredEvents);
+    displayNearbyThreats(result);
+    generateRiskReport();
+};
+
+const updateSelectedCoords = (lat, lng) => {
+    selectedLat = lat;
+    selectedLng = lng;
+};
+
+const displayNearbyThreats = (events) => {
+    const summary = document.getElementById('threats-summary');
+    const list = document.getElementById('threats-list');
+
+    const nearby = events.filter((e) => e.distance <= 500).sort((a, b) => a.distance - b.distance);
+
+    if (nearby.length === 0) {
+        summary.innerHTML = '<div class="risk-badge low"><i class="fas fa-check-circle"></i><span>No active threats within 500km of this location</span></div>';
+        list.innerHTML = '';
+        return;
+    }
+
+    const counts = {};
+    nearby.forEach((e) => {
+        const cat = e.category;
+        if (!counts[cat]) counts[cat] = { count: 0, closest: e.distance, title: e.categoryTitle };
+        counts[cat].count++;
+        if (e.distance < counts[cat].closest) counts[cat].closest = e.distance;
+    });
+
+    const iconMap = {
+        wildfires: { icon: 'fa-fire', cls: 'fire' },
+        severeStorms: { icon: 'fa-bolt', cls: 'storm' },
+        floods: { icon: 'fa-water', cls: 'flood' },
+        volcanoes: { icon: 'fa-volcano', cls: 'volcano' }
+    };
+
+    let summaryHtml = '';
+    Object.keys(counts).forEach((cat) => {
+        const info = iconMap[cat] || { icon: 'fa-circle-exclamation', cls: '' };
+        summaryHtml += '<div class="threat-count">' +
+            '<div class="threat-count-icon ' + info.cls + '"><i class="fas ' + info.icon + '"></i></div>' +
+            '<span class="threat-count-text">' + counts[cat].count + ' ' + counts[cat].title + '</span>' +
+            '<span class="threat-count-distance">Nearest: ' + counts[cat].closest + ' km</span>' +
+            '</div>';
+    });
+    summary.innerHTML = summaryHtml;
+
+    let listHtml = '';
+    nearby.slice(0, 5).forEach((e) => {
+        listHtml += '<div class="threat-item" data-lat="' + e.lat + '" data-lng="' + e.lng + '">' +
+            '<span class="threat-item-title">' + e.title + '</span>' +
+            '<span class="threat-item-distance">' + e.distance + ' km</span>' +
+            '</div>';
+    });
+    list.innerHTML = listHtml;
+
+    list.querySelectorAll('.threat-item').forEach((item) => {
+        item.addEventListener('click', () => {
+            flyToLocation(parseFloat(item.dataset.lat), parseFloat(item.dataset.lng), 8);
+        });
+    });
+};
+
+const generateRiskReport = () => {
+    const report = document.getElementById('risk-report');
+
+    if (!lastSoilData && !lastElevationData) {
+        report.innerHTML = '<p class="no-report">Select a location to generate a full risk report</p>';
+        return;
+    }
+
+    let html = '';
+    let riskScore = 0;
+
+    if (lastSoilData) {
+        let soilMessage = '';
+        if (lastSoilData.droughtRisk === 'high') {
+            soilMessage = 'Soil moisture is critically low at ' + lastSoilData.moisture + '%. Crops are at risk of drought stress. Irrigation is strongly recommended.';
+            riskScore += 3;
+        } else if (lastSoilData.droughtRisk === 'moderate') {
+            soilMessage = 'Soil moisture is at ' + lastSoilData.moisture + '%, which is below optimal. Monitor conditions closely and consider supplemental watering.';
+            riskScore += 2;
+        } else {
+            soilMessage = 'Soil moisture is healthy at ' + lastSoilData.moisture + '%. Conditions are favorable for crop growth.';
+            riskScore += 0;
+        }
+
+        html += '<div class="report-item">' +
+            '<div class="report-label">Soil & drought</div>' +
+            '<div class="report-text">' + soilMessage + '</div>' +
+            '</div>';
+
+        let rainMessage = '';
+        if (lastSoilData.rainfallWeek < 5) {
+            rainMessage = 'Only ' + lastSoilData.rainfallWeek + 'mm of rain in the past 7 days. This is very low and contributes to drought conditions.';
+            riskScore += 2;
+        } else if (lastSoilData.rainfallWeek < 20) {
+            rainMessage = lastSoilData.rainfallWeek + 'mm of rain in the past 7 days. Rainfall is moderate but may not sustain water-intensive crops.';
+            riskScore += 1;
+        } else {
+            rainMessage = lastSoilData.rainfallWeek + 'mm of rain in the past 7 days. Rainfall is adequate for most agricultural activities.';
+        }
+
+        html += '<div class="report-item">' +
+            '<div class="report-label">Rainfall</div>' +
+            '<div class="report-text">' + rainMessage + '</div>' +
+            '</div>';
+    }
+
+    if (lastElevationData) {
+        let elevMessage = '';
+        if (lastElevationData.erosionRisk === 'high') {
+            elevMessage = 'Altitude is ' + lastElevationData.altitude + 'm with a steep slope of ' + lastElevationData.slope + '°. High risk of soil erosion and landslides during heavy rainfall. Terracing is recommended.';
+            riskScore += 3;
+        } else if (lastElevationData.erosionRisk === 'moderate') {
+            elevMessage = 'Altitude is ' + lastElevationData.altitude + 'm with a slope of ' + lastElevationData.slope + '°. Moderate erosion risk — soil conservation measures would help.';
+            riskScore += 1;
+        } else {
+            elevMessage = 'Altitude is ' + lastElevationData.altitude + 'm on relatively flat terrain (' + lastElevationData.slope + '°). Low erosion risk.';
+        }
+
+        html += '<div class="report-item">' +
+            '<div class="report-label">Terrain & erosion</div>' +
+            '<div class="report-text">' + elevMessage + '</div>' +
+            '</div>';
+    }
+
+    const nearbyThreats = allEvents.filter((e) => {
+        const d = Math.round(Math.sqrt(
+            Math.pow((e.lat - selectedLat) * 111, 2) +
+            Math.pow((e.lng - selectedLng) * 111 * Math.cos(selectedLat * Math.PI / 180), 2)
+        ));
+        return d <= 500;
+    });
+
+    let threatMessage = '';
+    if (nearbyThreats.length === 0) {
+        threatMessage = 'No active natural disaster events detected within 500km. Conditions are stable.';
+    } else if (nearbyThreats.length <= 2) {
+        threatMessage = nearbyThreats.length + ' active event(s) detected nearby. Stay informed and monitor updates.';
+        riskScore += 1;
+    } else {
+        threatMessage = nearbyThreats.length + ' active events detected in the region. Exercise caution and prepare emergency plans.';
+        riskScore += 3;
+    }
+
+    html += '<div class="report-item">' +
+        '<div class="report-label">Nearby threats</div>' +
+        '<div class="report-text">' + threatMessage + '</div>' +
+        '</div>';
+
+    let overallRisk = 'low';
+    let overallText = 'LOW RISK — Conditions are favorable';
+    if (riskScore >= 6) {
+        overallRisk = 'high';
+        overallText = 'HIGH RISK — Take immediate precautions';
+    } else if (riskScore >= 3) {
+        overallRisk = 'moderate';
+        overallText = 'MODERATE RISK — Monitor conditions closely';
+    }
+
+    html += '<div class="report-overall ' + overallRisk + '">' +
+        '<div class="report-overall-label">Overall assessment</div>' +
+        '<div class="report-overall-text">' + overallText + '</div>' +
+        '</div>';
+
+    report.innerHTML = html;
 };
 
 const setFilter = (filter) => {

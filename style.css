@@ -434,6 +434,168 @@ body {
     font-size: 0.7rem;
 }
 
+.threats-summary {
+    margin-bottom: 8px;
+}
+
+.threats-summary .no-threats {
+    font-size: 0.8rem;
+    color: var(--neutral-500);
+    font-style: italic;
+}
+
+.threat-count {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--green-200);
+}
+
+.threat-count:last-child {
+    border-bottom: none;
+}
+
+.threat-count-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+}
+
+.threat-count-icon.fire {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+.threat-count-icon.flood {
+    background: var(--info-bg);
+    color: var(--info);
+}
+
+.threat-count-icon.storm {
+    background: var(--purple-bg);
+    color: var(--purple);
+}
+
+.threat-count-icon.volcano {
+    background: var(--coral-100);
+    color: var(--coral-600);
+}
+
+.threat-count-text {
+    flex: 1;
+    font-size: 0.8rem;
+    color: var(--neutral-800);
+}
+
+.threat-count-distance {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--neutral-600);
+}
+
+.threats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.threat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    background: var(--green-100);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 0.75rem;
+}
+
+.threat-item:hover {
+    background: var(--green-200);
+}
+
+.threat-item-title {
+    flex: 1;
+    color: var(--neutral-800);
+}
+
+.threat-item-distance {
+    font-weight: 500;
+    color: var(--neutral-600);
+    white-space: nowrap;
+}
+
+.risk-report .no-report {
+    font-size: 0.8rem;
+    color: var(--neutral-500);
+    font-style: italic;
+}
+
+.report-item {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--green-200);
+}
+
+.report-item:last-child {
+    border-bottom: none;
+}
+
+.report-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--green-700);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.report-text {
+    font-size: 0.8rem;
+    color: var(--neutral-800);
+    line-height: 1.5;
+}
+
+.report-overall {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.report-overall.low {
+    background: var(--green-200);
+    color: var(--green-800);
+}
+
+.report-overall.moderate {
+    background: var(--amber-200);
+    color: var(--amber-700);
+}
+
+.report-overall.high {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+.report-overall-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.report-overall-text {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
 .rainfall-chart-container {
     height: 100px;
     margin-top: 8px;
