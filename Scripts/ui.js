@@ -2,7 +2,7 @@ let allEvents = [];
 let filteredEvents = [];
 let currentFilter = 'all';
 let currentSort = 'newest';
-let currentDateRange = 30;
+let currentDateRange = 60;
 let rainfallChart = null;
 
 const showLoading = (cardId) => {

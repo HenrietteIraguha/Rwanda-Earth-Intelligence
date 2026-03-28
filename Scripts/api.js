@@ -138,11 +138,10 @@ const fetchElevation = async (lat, lng) => {
 };
 
 const fetchDisasterEvents = async (days) => {
-    const daysParam = days || 30;
+    const daysParam = days || 60;
 
     const url = 'https://eonet.gsfc.nasa.gov/api/v3/events?' +
         'days=' + daysParam +
-        '&status=open,closed' +
         '&api_key=' + NASA_API_KEY;
 
     const response = await fetch(url);
@@ -153,34 +152,45 @@ const fetchDisasterEvents = async (days) => {
 
     const data = await response.json();
 
-    return data.events.map((event) => {
-        const lastGeometry = event.geometry[event.geometry.length - 1];
-        const coords = lastGeometry.coordinates;
+    if (!data.events || data.events.length === 0) {
+        return [];
+    }
 
-        const rwandaLat = -1.9403;
-        const rwandaLng = 29.8739;
-        const eventLat = coords[1];
-        const eventLng = coords[0];
+    const rwandaLat = -1.9403;
+    const rwandaLng = 29.8739;
+    const maxDistanceKm = 8000;
 
-        const distanceKm = Math.round(
-            Math.sqrt(
-                Math.pow((eventLat - rwandaLat) * 111, 2) +
-                Math.pow((eventLng - rwandaLng) * 111 * Math.cos(rwandaLat * Math.PI / 180), 2)
-            )
-        );
+    const processed = data.events
+        .filter((event) => event.geometry && event.geometry.length > 0)
+        .map((event) => {
+            const lastGeometry = event.geometry[event.geometry.length - 1];
+            const coords = lastGeometry.coordinates;
+            const eventLat = coords[1];
+            const eventLng = coords[0];
 
-        return {
-            id: event.id,
-            title: event.title,
-            category: event.categories[0].id,
-            categoryTitle: event.categories[0].title,
-            date: lastGeometry.date,
-            lat: eventLat,
-            lng: eventLng,
-            distance: distanceKm,
-            source: event.sources && event.sources.length > 0 ? event.sources[0].url : null,
-            geometry: event.geometry,
-            categories: event.categories
-        };
-    });
+            const distanceKm = Math.round(
+                Math.sqrt(
+                    Math.pow((eventLat - rwandaLat) * 111, 2) +
+                    Math.pow((eventLng - rwandaLng) * 111 * Math.cos(rwandaLat * Math.PI / 180), 2)
+                )
+            );
+
+            return {
+                id: event.id,
+                title: event.title,
+                category: event.categories[0].id,
+                categoryTitle: event.categories[0].title,
+                date: lastGeometry.date,
+                lat: eventLat,
+                lng: eventLng,
+                distance: distanceKm,
+                source: event.sources && event.sources.length > 0 ? event.sources[0].url : null,
+                geometry: event.geometry,
+                categories: event.categories
+            };
+        })
+        .filter((event) => event.distance <= maxDistanceKm)
+        .sort((a, b) => a.distance - b.distance);
+
+    return processed;
 };
