@@ -1,9 +1,9 @@
-const RWANDA_CENTER = [-1.9403, 29.8739];
-let savedLocations = JSON.parse(localStorage.getItem('savedLocations') || '[]');
-let currentFilter = 'all';
+const RW_center = [-1.9403, 29.8739];
+let saved = JSON.parse(localStorage.getItem('savedLocations') || '[]');
+let Filterthis = 'all';
 
 const map = L.map('map', {
-    center: RWANDA_CENTER,
+    center: RW_center,
     zoom: 9,
     minZoom: 7,
     maxZoom: 14
@@ -18,7 +18,7 @@ L.tileLayer(
     { maxZoom: 9, opacity: 0.6 }
 ).addTo(map);
 
-let selectedMarker = null;
+let Markthis = null;
 
 const showError = (msg) => {
     const toast = document.getElementById('error-toast');
@@ -31,7 +31,7 @@ document.getElementById('toast-close').addEventListener('click', () => {
     document.getElementById('error-toast').classList.add('hidden');
 });
 
-const searchLocation = async (query) => {
+const searchplace = async (query) => {
     const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' +
         encodeURIComponent(query) + '&countrycodes=rw&limit=1';
 
@@ -55,7 +55,7 @@ const searchLocation = async (query) => {
     };
 };
 
-const fetchSoilData = async (lat, lng) => {
+const getsoil = async (lat, lng) => {
     const url = 'https://api.open-meteo.com/v1/forecast?' +
         'latitude=' + lat + '&longitude=' + lng +
         '&daily=precipitation_sum,et0_fao_evapotranspiration' +
@@ -83,7 +83,7 @@ const fetchSoilData = async (lat, lng) => {
     };
 };
 
-const fetchElevation = async (lat, lng) => {
+const getelevation = async (lat, lng) => {
     const offset = 0.005;
 
     const url1 = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat +
@@ -108,7 +108,7 @@ const fetchElevation = async (lat, lng) => {
     return { altitude: Math.round(elev), slope: slope };
 };
 
-const fetchNearbyThreats = async (lat, lng) => {
+const getnearevents = async (lat, lng) => {
     try {
         const url = 'https://eonet.gsfc.nasa.gov/api/v3/events?' +
             'days=30&api_key=' + NASA_API_KEY;
@@ -144,7 +144,7 @@ const fetchNearbyThreats = async (lat, lng) => {
     }
 };
 
-const getMoistureInfo = (moisture) => {
+const findmoistureinfo = (moisture) => {
     if (moisture === null) return { text: 'No data', badge: '', class: '' };
     if (moisture < 15) return { text: 'Very dry — crops need water urgently', badge: 'Critical', class: 'bad' };
     if (moisture < 25) return { text: 'Dry — consider irrigation soon', badge: 'Low', class: 'moderate' };
@@ -152,21 +152,21 @@ const getMoistureInfo = (moisture) => {
     return { text: 'Good moisture — favorable for farming', badge: 'Good', class: 'good' };
 };
 
-const getRainInfo = (rain) => {
+const findraininfo = (rain) => {
     if (rain < 5) return { text: 'Very little rain — drought conditions possible', badge: 'Low', class: 'bad' };
     if (rain < 20) return { text: 'Below average — may not sustain all crops', badge: 'Below avg', class: 'moderate' };
     if (rain < 60) return { text: 'Normal rainfall — good for farming', badge: 'Normal', class: 'good' };
     return { text: 'Heavy rain — watch for flooding on slopes', badge: 'High', class: 'moderate' };
 };
 
-const getSlopeInfo = (slope) => {
+const findslopeinfo = (slope) => {
     if (slope < 5) return { text: 'Flat land — safe for all farming', badge: 'Flat', class: 'good' };
     if (slope < 10) return { text: 'Gentle slope — low erosion risk', badge: 'Gentle', class: 'good' };
     if (slope < 20) return { text: 'Moderate slope — use terracing', badge: 'Moderate', class: 'moderate' };
     return { text: 'Steep — high erosion and landslide risk', badge: 'Steep', class: 'bad' };
 };
 
-const calculateScore = (moisture, rain, slope) => {
+const calculatescore = (moisture, rain, slope) => {
     let score = 100;
 
     if (moisture !== null) {
@@ -186,13 +186,13 @@ const calculateScore = (moisture, rain, slope) => {
     return Math.max(0, Math.min(100, score));
 };
 
-const getScoreInfo = (score) => {
+const findscoreinfo = (score) => {
     if (score >= 75) return { text: 'Conditions are favorable', badge: 'Safe', class: 'good' };
     if (score >= 50) return { text: 'Some risks — monitor closely', badge: 'Caution', class: 'moderate' };
     return { text: 'High risk — take precautions', badge: 'Warning', class: 'bad' };
 };
 
-const getCropRecommendation = (altitude, moisture, rain) => {
+const showcroprecom = (altitude, moisture, rain) => {
     const crops = [];
 
     if (altitude > 2000) {
@@ -218,7 +218,7 @@ const getCropRecommendation = (altitude, moisture, rain) => {
     return 'Based on this altitude (' + altitude + 'm) and conditions, suitable crops include: ' + crops.slice(0, 5).join(', ') + '.';
 };
 
-const generateRecommendation = (moisture, rain, slope, score, threats, altitude) => {
+const displayrecom = (moisture, rain, slope, score, threats, altitude) => {
     const tips = [];
 
     if (moisture !== null && moisture < 15) {
@@ -244,7 +244,7 @@ const generateRecommendation = (moisture, rain, slope, score, threats, altitude)
         tips.push('Active ' + closest.category.toLowerCase() + ' detected ' + closest.distance + 'km away (' + closest.title + '). Stay alert and monitor updates from local authorities.');
     }
 
-    tips.push(getCropRecommendation(altitude, moisture, rain));
+    tips.push(showcroprecom(altitude, moisture, rain));
 
     if (tips.length === 1) {
         tips.unshift('Conditions look good for farming. No nearby threats detected. Continue regular monitoring and maintain soil health with organic matter.');
@@ -253,12 +253,12 @@ const generateRecommendation = (moisture, rain, slope, score, threats, altitude)
     return tips.join(' ');
 };
 
-const displayStats = (soil, elev) => {
-    const moistureInfo = getMoistureInfo(soil.moisture);
-    const rainInfo = getRainInfo(soil.rainfallWeek);
-    const slopeInfo = getSlopeInfo(elev.slope);
-    const score = calculateScore(soil.moisture, soil.rainfallWeek, elev.slope);
-    const scoreInfo = getScoreInfo(score);
+const showstats = (soil, elev) => {
+    const moistureInfo = findmoistureinfo(soil.moisture);
+    const rainInfo = findraininfo(soil.rainfallWeek);
+    const slopeInfo = findslopeinfo(elev.slope);
+    const score = calculatescore(soil.moisture, soil.rainfallWeek, elev.slope);
+    const scoreInfo = findscoreinfo(score);
 
     document.getElementById('moisture-value').textContent = soil.moisture !== null ? soil.moisture + '%' : '--';
     document.getElementById('moisture-bar').style.width = (soil.moisture || 0) + '%';
@@ -282,7 +282,7 @@ const displayStats = (soil, elev) => {
     return { moistureInfo, rainInfo, slopeInfo, score, scoreInfo };
 };
 
-const displayReport = (name, fullName, soil, elev, infos, threats) => {
+const showreport = (name, fullName, soil, elev, infos, threats) => {
     const { moistureInfo, rainInfo, slopeInfo, score, scoreInfo } = infos;
 
     document.getElementById('report-title').textContent = 'Intelligence Report — ' + name;
@@ -332,7 +332,7 @@ const displayReport = (name, fullName, soil, elev, infos, threats) => {
     const rec = document.getElementById('report-recommendation');
     rec.classList.remove('hidden');
 
-    const recommendation = generateRecommendation(soil.moisture, soil.rainfallWeek, elev.slope, score, threats, elev.altitude);
+    const recommendation = displayrecom(soil.moisture, soil.rainfallWeek, elev.slope, score, threats, elev.altitude);
 
     if (score >= 75) {
         rec.style.background = '#EAF3DE';
@@ -348,18 +348,18 @@ const displayReport = (name, fullName, soil, elev, infos, threats) => {
     document.getElementById('recommendation-text').textContent = 'Recommendation: ' + recommendation;
 };
 
-const saveLocation = (name, fullName, soil, elev, score) => {
-    const exists = savedLocations.find((l) => l.name === name);
+const addtohistory = (name, fullName, soil, elev, score) => {
+    const exists = saved.find((l) => l.name === name);
     if (exists) {
         Object.assign(exists, { fullName, soil, elev, score, time: Date.now() });
     } else {
-        savedLocations.push({ name, fullName, soil, elev, score, time: Date.now() });
+        saved.push({ name, fullName, soil, elev, score, time: Date.now() });
     }
-    localStorage.setItem('savedLocations', JSON.stringify(savedLocations));
+    localStorage.setItem('savedLocations', JSON.stringify(saved));
     renderHistory();
 };
 
-const getRiskLevel = (score) => {
+const findrisklevel = (score) => {
     if (score >= 75) return 'low';
     if (score >= 50) return 'moderate';
     return 'high';
@@ -370,14 +370,14 @@ const renderHistory = () => {
     const searchTerm = document.getElementById('history-search').value.toLowerCase().trim();
     const sortBy = document.getElementById('sort-select').value;
 
-    let filtered = [...savedLocations];
+    let filtered = [...saved];
 
     if (searchTerm) {
         filtered = filtered.filter((l) => l.name.toLowerCase().includes(searchTerm));
     }
 
-    if (currentFilter !== 'all') {
-        filtered = filtered.filter((l) => getRiskLevel(l.score) === currentFilter);
+    if (Filterthis !== 'all') {
+        filtered = filtered.filter((l) => findrisklevel(l.score) === Filterthis);
     }
 
     if (sortBy === 'newest') filtered.sort((a, b) => b.time - a.time);
@@ -393,7 +393,7 @@ const renderHistory = () => {
     }
 
     container.innerHTML = filtered.map((l) => {
-        const risk = getRiskLevel(l.score);
+        const risk = findrisklevel(l.score);
         const badgeClass = risk === 'low' ? 'good' : risk === 'moderate' ? 'moderate' : 'bad';
         const badgeText = risk === 'low' ? 'Low risk' : risk === 'moderate' ? 'Moderate' : 'High risk';
 
@@ -408,40 +408,40 @@ const renderHistory = () => {
 
     container.querySelectorAll('.history-item').forEach((item) => {
         item.addEventListener('click', () => {
-            const loc = savedLocations.find((l) => l.name === item.dataset.name);
+            const loc = saved.find((l) => l.name === item.dataset.name);
             if (loc) {
-                const infos = displayStats(loc.soil, loc.elev);
-                displayReport(loc.name, loc.fullName, loc.soil, loc.elev, infos);
+                const infos = showstats(loc.soil, loc.elev);
+                showreport(loc.name, loc.fullName, loc.soil, loc.elev, infos);
             }
         });
     });
 };
 
-const analyseLocation = async (lat, lng, name, fullName) => {
+const runanalysis = async (lat, lng, name, fullName) => {
     document.getElementById('location-name').textContent = name;
     document.getElementById('stats-loading').classList.remove('hidden');
     document.querySelector('.stats-grid').style.opacity = '0.3';
 
-    if (selectedMarker) map.removeLayer(selectedMarker);
-    selectedMarker = L.marker([lat, lng]).addTo(map);
-    selectedMarker.bindPopup('<strong>' + name + '</strong>').openPopup();
+    if (Markthis) map.removeLayer(Markthis);
+    Markthis = L.marker([lat, lng]).addTo(map);
+    Markthis.bindPopup('<strong>' + name + '</strong>').openPopup();
     map.flyTo([lat, lng], 11, { duration: 1.2 });
 
     try {
         const [soil, elev, threats] = await Promise.all([
-            fetchSoilData(lat, lng),
-            fetchElevation(lat, lng),
-            fetchNearbyThreats(lat, lng)
+            getsoil(lat, lng),
+            getelevation(lat, lng),
+            getnearevents(lat, lng)
         ]);
 
         document.querySelector('.stats-grid').style.opacity = '1';
         document.getElementById('stats-loading').classList.add('hidden');
 
-        const infos = displayStats(soil, elev);
-        displayReport(name, fullName, soil, elev, infos, threats);
+        const infos = showstats(soil, elev);
+        showreport(name, fullName, soil, elev, infos, threats);
 
-        const score = calculateScore(soil.moisture, soil.rainfallWeek, elev.slope);
-        saveLocation(name, fullName, soil, elev, score);
+        const score = calculatescore(soil.moisture, soil.rainfallWeek, elev.slope);
+        addtohistory(name, fullName, soil, elev, score);
 
     } catch (err) {
         document.querySelector('.stats-grid').style.opacity = '1';
@@ -450,32 +450,32 @@ const analyseLocation = async (lat, lng, name, fullName) => {
     }
 };
 
-let isSearching = false;
+let busy = false;
 
-const sanitizeInput = (text) => {
+const cleanInput = (text) => {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML.trim();
 };
 
 document.getElementById('search-btn').addEventListener('click', async () => {
-    if (isSearching) return;
+    if (busy) return;
 
     let query = document.getElementById('location-search').value.trim();
     if (!query) { showError('Type a location name first.'); return; }
     if (query.length > 100) { showError('Search text is too long. Use a shorter location name.'); return; }
 
-    query = sanitizeInput(query);
+    query = cleanInput(query);
     if (!query) { showError('Please enter a valid location name.'); return; }
 
-    isSearching = true;
+    busy = true;
     try {
-        const loc = await searchLocation(query);
-        await analyseLocation(loc.lat, loc.lng, loc.name, loc.fullName);
+        const loc = await searchplace(query);
+        await runanalysis(loc.lat, loc.lng, loc.name, loc.fullName);
     } catch (err) {
         showError(err.message);
     } finally {
-        isSearching = false;
+        busy = false;
     }
 });
 
@@ -492,14 +492,14 @@ map.on('click', async (e) => {
         return;
     }
 
-    await analyseLocation(lat, lng, 'Selected Point', 'Custom location');
+    await runanalysis(lat, lng, 'Selected Point', 'Custom location');
 });
 
 document.querySelectorAll('.pill').forEach((pill) => {
     pill.addEventListener('click', () => {
         document.querySelectorAll('.pill').forEach((p) => p.classList.remove('active'));
         pill.classList.add('active');
-        currentFilter = pill.dataset.filter;
+        Filterthis = pill.dataset.filter;
         renderHistory();
     });
 });
@@ -508,7 +508,7 @@ document.getElementById('sort-select').addEventListener('change', renderHistory)
 document.getElementById('history-search').addEventListener('input', renderHistory);
 
 document.getElementById('clear-history').addEventListener('click', () => {
-    savedLocations = [];
+    saved = [];
     localStorage.removeItem('savedLocations');
     renderHistory();
 });
