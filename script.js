@@ -1,7 +1,9 @@
+// the center of rwanda on the map
 const RW_center = [-1.9403, 29.8739];
 let saved = JSON.parse(localStorage.getItem('savedLocations') || '[]');
 let Filterthis = 'all';
 
+// setting up the leaflet map
 const map = L.map('map', {
     center: RW_center,
     zoom: 9,
@@ -9,9 +11,11 @@ const map = L.map('map', {
     maxZoom: 14
 });
 
+// the  map layer from openstreetmap api
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap'
 }).addTo(map);
+
 
 L.tileLayer(
     'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/MODIS_Terra_NDVI_8Day/default/2024-03-05/GoogleMapsCompatible_Level9/{z}/{y}/{x}.png',
@@ -19,6 +23,7 @@ L.tileLayer(
 ).addTo(map);
 
 let Markthis = null;
+
 
 const showError = (msg) => {
     const toast = document.getElementById('error-toast');
@@ -31,6 +36,7 @@ document.getElementById('toast-close').addEventListener('click', () => {
     document.getElementById('error-toast').classList.add('hidden');
 });
 
+// searches for the place the user types in using  nominatim
 const searchplace = async (query) => {
     const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' +
         encodeURIComponent(query) + '&countrycodes=rw&limit=1';
@@ -38,13 +44,14 @@ const searchplace = async (query) => {
     const res = await fetch(url);
     if (!res.ok) throw new Error('Search failed. Try again.');
     const data = await res.json();
-    if (data.length === 0) throw new Error('"' + query + '" not found in Rwanda. Try a district or city name like Musanze, Nyabihu, or Gasabo.');
+    if (data.length === 0) throw new Error('"' + query + '" not found in Rwanda. Try a district name like Musanze or Gasabo.');
 
     const lat = parseFloat(data[0].lat);
     const lng = parseFloat(data[0].lon);
 
+    // making sure its actually inside rwanda borders
     if (lat < -2.85 || lat > -1.05 || lng < 28.85 || lng > 30.9) {
-        throw new Error('Location is outside Rwanda. Please search for a place within Rwanda.');
+        throw new Error('Thats outside Rwanda. Try searching for a place within the country.');
     }
 
     return {
@@ -54,7 +61,7 @@ const searchplace = async (query) => {
         fullName: data[0].display_name
     };
 };
-
+// getting the  soil and rainfall data from the  open-meteo api
 const getsoil = async (lat, lng) => {
     const url = 'https://api.open-meteo.com/v1/forecast?' +
         'latitude=' + lat + '&longitude=' + lng +
@@ -75,6 +82,8 @@ const getsoil = async (lat, lng) => {
     const weekRain = rain.slice(-7).reduce((s, v) => s + (v || 0), 0);
     const monthRain = rain.reduce((s, v) => s + (v || 0), 0);
 
+    console.log('soil data loaded - moisture:', moisturePercent, '% rainfall:', Math.round(weekRain*10)/10, 'mm');
+
     return {
         moisture: moisturePercent,
         temperature: temp.length > 0 ? Math.round(temp[temp.length - 1] * 10) / 10 : null,
@@ -93,7 +102,7 @@ const getelevation = async (lat, lng) => {
 
     const [res1, res2] = await Promise.all([fetch(url1), fetch(url2)]);
 
-    if (!res1.ok || !res2.ok) throw new Error('Could not get elevation data.');
+    if (!res1.ok || !res2.ok) throw new Error('Elevation data not available right now.');
 
     const data1 = await res1.json();
     const data2 = await res2.json();
@@ -102,7 +111,7 @@ const getelevation = async (lat, lng) => {
     const elev2 = data2.elevation || 0;
 
     const diff = Math.abs(elev2 - elev);
-    const dist = offset * 111000;
+    const dist = offset * 111000; 
     const slope = Math.round(Math.atan(diff / dist) * (180 / Math.PI) * 10) / 10;
 
     return { altitude: Math.round(elev), slope: slope };
@@ -125,6 +134,8 @@ const getnearevents = async (lat, lng) => {
                 const coords = e.geometry[e.geometry.length - 1].coordinates;
                 const eLat = coords[1];
                 const eLng = coords[0];
+
+                // distance formula not super accurate but good enough for this
                 const dist = Math.round(Math.sqrt(
                     Math.pow((eLat - lat) * 111, 2) +
                     Math.pow((eLng - lng) * 111 * Math.cos(lat * Math.PI / 180), 2)
@@ -140,6 +151,7 @@ const getnearevents = async (lat, lng) => {
             .sort((a, b) => a.distance - b.distance)
             .slice(0, 5);
     } catch (err) {
+        console.log('nasa eonet failed:', err.message);
         return [];
     }
 };
@@ -191,6 +203,7 @@ const findscoreinfo = (score) => {
     if (score >= 50) return { text: 'Some risks — monitor closely', badge: 'Caution', class: 'moderate' };
     return { text: 'High risk — take precautions', badge: 'Warning', class: 'bad' };
 };
+
 
 const showcroprecom = (altitude, moisture, rain) => {
     const crops = [];
@@ -252,6 +265,7 @@ const displayrecom = (moisture, rain, slope, score, threats, altitude) => {
 
     return tips.join(' ');
 };
+
 
 const showstats = (soil, elev) => {
     const moistureInfo = findmoistureinfo(soil.moisture);
@@ -348,6 +362,8 @@ const showreport = (name, fullName, soil, elev, infos, threats) => {
     document.getElementById('recommendation-text').textContent = 'Recommendation: ' + recommendation;
 };
 
+
+
 const addtohistory = (name, fullName, soil, elev, score) => {
     const exists = saved.find((l) => l.name === name);
     if (exists) {
@@ -364,6 +380,7 @@ const findrisklevel = (score) => {
     if (score >= 50) return 'moderate';
     return 'high';
 };
+
 
 const renderHistory = () => {
     const container = document.getElementById('history-table');
@@ -417,6 +434,8 @@ const renderHistory = () => {
     });
 };
 
+
+
 const runanalysis = async (lat, lng, name, fullName) => {
     document.getElementById('location-name').textContent = name;
     document.getElementById('stats-loading').classList.remove('hidden');
@@ -442,6 +461,7 @@ const runanalysis = async (lat, lng, name, fullName) => {
 
         const score = calculatescore(soil.moisture, soil.rainfallWeek, elev.slope);
         addtohistory(name, fullName, soil, elev, score);
+        console.log('analysis done for', name, '- score:', score);
 
     } catch (err) {
         document.querySelector('.stats-grid').style.opacity = '1';
@@ -449,6 +469,7 @@ const runanalysis = async (lat, lng, name, fullName) => {
         showError(err.message);
     }
 };
+
 
 let busy = false;
 
@@ -463,7 +484,7 @@ document.getElementById('search-btn').addEventListener('click', async () => {
 
     let query = document.getElementById('location-search').value.trim();
     if (!query) { showError('Type a location name first.'); return; }
-    if (query.length > 100) { showError('Search text is too long. Use a shorter location name.'); return; }
+    if (query.length > 100) { showError('Search text is too long.'); return; }
 
     query = cleanInput(query);
     if (!query) { showError('Please enter a valid location name.'); return; }
