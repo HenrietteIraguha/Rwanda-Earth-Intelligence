@@ -1,5 +1,5 @@
 const RWANDA_CENTER = [-1.9403, 29.8739];
-let savedLocations = [];
+let savedLocations = JSON.parse(localStorage.getItem('savedLocations') || '[]');
 let currentFilter = 'all';
 
 const map = L.map('map', {
@@ -33,16 +33,23 @@ document.getElementById('toast-close').addEventListener('click', () => {
 
 const searchLocation = async (query) => {
     const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' +
-        encodeURIComponent(query + ', Rwanda') + '&limit=1';
+        encodeURIComponent(query) + '&countrycodes=rw&limit=1';
 
     const res = await fetch(url);
     if (!res.ok) throw new Error('Search failed. Try again.');
     const data = await res.json();
-    if (data.length === 0) throw new Error('"' + query + '" not found in Rwanda.');
+    if (data.length === 0) throw new Error('"' + query + '" not found in Rwanda. Try a district or city name like Musanze, Nyabihu, or Gasabo.');
+
+    const lat = parseFloat(data[0].lat);
+    const lng = parseFloat(data[0].lon);
+
+    if (lat < -2.85 || lat > -1.05 || lng < 28.85 || lng > 30.9) {
+        throw new Error('Location is outside Rwanda. Please search for a place within Rwanda.');
+    }
 
     return {
-        lat: parseFloat(data[0].lat),
-        lng: parseFloat(data[0].lon),
+        lat: lat,
+        lng: lng,
         name: data[0].display_name.split(',')[0],
         fullName: data[0].display_name
     };
@@ -77,18 +84,24 @@ const fetchSoilData = async (lat, lng) => {
 };
 
 const fetchElevation = async (lat, lng) => {
-    const offset = 0.001;
-    const url = 'https://api.open-elevation.com/api/v1/lookup?locations=' +
-        lat + ',' + lng + '|' + (lat + offset) + ',' + (lng + offset);
+    const offset = 0.005;
 
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Could not get elevation data.');
-    const data = await res.json();
+    const url1 = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat +
+        '&longitude=' + lng + '&daily=precipitation_sum&forecast_days=1&timezone=Africa/Kigali';
+    const url2 = 'https://api.open-meteo.com/v1/forecast?latitude=' + (lat + offset) +
+        '&longitude=' + (lng + offset) + '&daily=precipitation_sum&forecast_days=1&timezone=Africa/Kigali';
 
-    if (!data.results || data.results.length < 2) throw new Error('Elevation unavailable.');
+    const [res1, res2] = await Promise.all([fetch(url1), fetch(url2)]);
 
-    const elev = data.results[0].elevation;
-    const diff = Math.abs(data.results[1].elevation - elev);
+    if (!res1.ok || !res2.ok) throw new Error('Could not get elevation data.');
+
+    const data1 = await res1.json();
+    const data2 = await res2.json();
+
+    const elev = data1.elevation || 0;
+    const elev2 = data2.elevation || 0;
+
+    const diff = Math.abs(elev2 - elev);
     const dist = offset * 111000;
     const slope = Math.round(Math.atan(diff / dist) * (180 / Math.PI) * 10) / 10;
 
@@ -179,7 +192,33 @@ const getScoreInfo = (score) => {
     return { text: 'High risk — take precautions', badge: 'Warning', class: 'bad' };
 };
 
-const generateRecommendation = (moisture, rain, slope, score, threats) => {
+const getCropRecommendation = (altitude, moisture, rain) => {
+    const crops = [];
+
+    if (altitude > 2000) {
+        crops.push('Irish potatoes', 'wheat', 'peas', 'pyrethrum');
+        if (moisture !== null && moisture > 25) crops.push('cabbage', 'carrots');
+    } else if (altitude > 1500) {
+        crops.push('beans', 'maize', 'sorghum', 'sweet potatoes');
+        if (rain > 20) crops.push('tea', 'coffee');
+        if (moisture !== null && moisture > 30) crops.push('tomatoes', 'onions');
+    } else if (altitude > 1000) {
+        crops.push('cassava', 'bananas', 'maize', 'groundnuts');
+        if (rain > 30) crops.push('rice', 'sugar cane');
+        if (moisture !== null && moisture > 20) crops.push('soybeans', 'vegetables');
+    } else {
+        crops.push('cassava', 'bananas', 'palm oil', 'tropical fruits');
+        if (rain > 40) crops.push('rice', 'sugar cane');
+    }
+
+    if (moisture !== null && moisture < 15) {
+        return 'Due to very dry conditions, drought-resistant crops are recommended: sorghum, cassava, millet, and sweet potatoes.';
+    }
+
+    return 'Based on this altitude (' + altitude + 'm) and conditions, suitable crops include: ' + crops.slice(0, 5).join(', ') + '.';
+};
+
+const generateRecommendation = (moisture, rain, slope, score, threats, altitude) => {
     const tips = [];
 
     if (moisture !== null && moisture < 15) {
@@ -205,8 +244,10 @@ const generateRecommendation = (moisture, rain, slope, score, threats) => {
         tips.push('Active ' + closest.category.toLowerCase() + ' detected ' + closest.distance + 'km away (' + closest.title + '). Stay alert and monitor updates from local authorities.');
     }
 
-    if (tips.length === 0) {
-        tips.push('Conditions look good for farming. No nearby threats detected. Continue regular monitoring and maintain soil health with organic matter.');
+    tips.push(getCropRecommendation(altitude, moisture, rain));
+
+    if (tips.length === 1) {
+        tips.unshift('Conditions look good for farming. No nearby threats detected. Continue regular monitoring and maintain soil health with organic matter.');
     }
 
     return tips.join(' ');
@@ -291,7 +332,7 @@ const displayReport = (name, fullName, soil, elev, infos, threats) => {
     const rec = document.getElementById('report-recommendation');
     rec.classList.remove('hidden');
 
-    const recommendation = generateRecommendation(soil.moisture, soil.rainfallWeek, elev.slope, score, threats);
+    const recommendation = generateRecommendation(soil.moisture, soil.rainfallWeek, elev.slope, score, threats, elev.altitude);
 
     if (score >= 75) {
         rec.style.background = '#EAF3DE';
@@ -314,6 +355,7 @@ const saveLocation = (name, fullName, soil, elev, score) => {
     } else {
         savedLocations.push({ name, fullName, soil, elev, score, time: Date.now() });
     }
+    localStorage.setItem('savedLocations', JSON.stringify(savedLocations));
     renderHistory();
 };
 
@@ -408,15 +450,32 @@ const analyseLocation = async (lat, lng, name, fullName) => {
     }
 };
 
-document.getElementById('search-btn').addEventListener('click', async () => {
-    const query = document.getElementById('location-search').value.trim();
-    if (!query) { showError('Type a location name first.'); return; }
+let isSearching = false;
 
+const sanitizeInput = (text) => {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML.trim();
+};
+
+document.getElementById('search-btn').addEventListener('click', async () => {
+    if (isSearching) return;
+
+    let query = document.getElementById('location-search').value.trim();
+    if (!query) { showError('Type a location name first.'); return; }
+    if (query.length > 100) { showError('Search text is too long. Use a shorter location name.'); return; }
+
+    query = sanitizeInput(query);
+    if (!query) { showError('Please enter a valid location name.'); return; }
+
+    isSearching = true;
     try {
         const loc = await searchLocation(query);
         await analyseLocation(loc.lat, loc.lng, loc.name, loc.fullName);
     } catch (err) {
         showError(err.message);
+    } finally {
+        isSearching = false;
     }
 });
 
@@ -425,7 +484,15 @@ document.getElementById('location-search').addEventListener('keydown', (e) => {
 });
 
 map.on('click', async (e) => {
-    await analyseLocation(e.latlng.lat, e.latlng.lng, 'Selected Point', 'Custom location');
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+
+    if (lat < -2.85 || lat > -1.05 || lng < 28.85 || lng > 30.9) {
+        showError('Please click within Rwanda to analyse a location.');
+        return;
+    }
+
+    await analyseLocation(lat, lng, 'Selected Point', 'Custom location');
 });
 
 document.querySelectorAll('.pill').forEach((pill) => {
@@ -442,5 +509,8 @@ document.getElementById('history-search').addEventListener('input', renderHistor
 
 document.getElementById('clear-history').addEventListener('click', () => {
     savedLocations = [];
+    localStorage.removeItem('savedLocations');
     renderHistory();
 });
+
+renderHistory();
