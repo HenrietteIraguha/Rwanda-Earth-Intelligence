@@ -434,8 +434,7 @@ const renderHistory = () => {
         });
     });
 };
-
-
+// this is the main function - runs when user searches or clicks the map
 
 const runanalysis = async (lat, lng, name, fullName) => {
     document.getElementById('location-name').textContent = name;
