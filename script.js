@@ -40,6 +40,7 @@ document.getElementById('toast-close').addEventListener('click', () => {
 const searchplace = async (query) => {
     const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' +
         encodeURIComponent(query) + '&countrycodes=rw&limit=1';
+// nominatim geocoding turns thw  place name to lat/lng
 
     const res = await fetch(url);
     if (!res.ok) throw new Error('Search failed. Try again.');
@@ -49,7 +50,7 @@ const searchplace = async (query) => {
     const lat = parseFloat(data[0].lat);
     const lng = parseFloat(data[0].lon);
 
-    // making sure its actually inside rwanda borders
+// making sure its actually inside rwanda borders
     if (lat < -2.85 || lat > -1.05 || lng < 28.85 || lng > 30.9) {
         throw new Error('Thats outside Rwanda. Try searching for a place within the country.');
     }
@@ -135,7 +136,7 @@ const getnearevents = async (lat, lng) => {
                 const eLat = coords[1];
                 const eLng = coords[0];
 
-                // distance formula not super accurate but good enough for this
+        // distance formula not super accurate but good enough for this
                 const dist = Math.round(Math.sqrt(
                     Math.pow((eLat - lat) * 111, 2) +
                     Math.pow((eLng - lng) * 111 * Math.cos(lat * Math.PI / 180), 2)
@@ -155,7 +156,7 @@ const getnearevents = async (lat, lng) => {
         return [];
     }
 };
-
+// turning the numbers into english for users 
 const findmoistureinfo = (moisture) => {
     if (moisture === null) return { text: 'No data', badge: '', class: '' };
     if (moisture < 15) return { text: 'Very dry — crops need water urgently', badge: 'Critical', class: 'bad' };
@@ -204,7 +205,7 @@ const findscoreinfo = (score) => {
     return { text: 'High risk — take precautions', badge: 'Warning', class: 'bad' };
 };
 
-
+// showing crop suggestions based on the altitudes for the area in Rwanda 
 const showcroprecom = (altitude, moisture, rain) => {
     const crops = [];
 
