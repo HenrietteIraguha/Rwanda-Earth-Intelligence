@@ -61,19 +61,29 @@ Rwanda-Earth-Intelligence/
 ---
 
 ## Run Locally
-
+ 
+### Prerequisites
+- A modern web browser (Chrome, Firefox, Edge, or Safari)
+- An internet connection (required for API calls and map tiles)
+- A NASA API key — get one for free at [api.nasa.gov](https://api.nasa.gov/)
+ 
+### Steps
+ 
+1. Clone the repository:
 ```bash
 git clone https://github.com/HenrietteIraguha/Rwanda-Earth-Intelligence.git
 cd Rwanda-Earth-Intelligence
 ```
-
-Create `config.js`:
+ 
+2. Create a `config.js` file in the root folder (this file is not on GitHub for security):
 ```javascript
 const NASA_API_KEY = "your_nasa_key_here";
 ```
-
-Open `index.html` in the  browser. Get a free NASA key at [api.nasa.gov](https://api.nasa.gov/).
-
+ 
+3. Open `index.html` in your browser — double-click the file or right-click and open with your browser.
+ 
+4. Type a location like "Musanze" or "Kigali" and click **Analyse** to generate an intelligence report.
+ 
 ---
 
 ## Deployment
