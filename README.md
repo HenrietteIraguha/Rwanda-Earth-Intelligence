@@ -36,6 +36,16 @@ All APIs except NASA EONET are open-source and require no authentication. The NA
 
 ---
 
+## Libraries Used
+ 
+| Library | Version | Purpose |
+|---------|---------|---------|
+| [Leaflet.js](https://leafletjs.com/) | 1.9.4 | Interactive map rendering and tile layers |
+| [Font Awesome](https://fontawesome.com/) | 6.5.1 | Icons throughout the UI |
+| [DM Sans](https://fonts.google.com/specimen/DM+Sans) | — | Google Font for typography |
+ 
+All libraries are loaded via CDN — no installation required.
+
 ## Project Structure
 
 ```
@@ -62,7 +72,7 @@ Create `config.js`:
 const NASA_API_KEY = "your_nasa_key_here";
 ```
 
-Open `index.html` in your browser. Get a free NASA key at [api.nasa.gov](https://api.nasa.gov/).
+Open `index.html` in the  browser. Get a free NASA key at [api.nasa.gov](https://api.nasa.gov/).
 
 ---
 
